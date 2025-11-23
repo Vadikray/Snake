@@ -15,20 +15,23 @@ public class Controller : MonoBehaviour
     private Snake _snake;
     private Camera _camera;
     private Plane _plane;
+    private string _clientID;
 
-    public void Init(PlayerAim aim, Player player, Snake snake)
+    public void Init(string clientID, PlayerAim aim, Player player, Snake snake)
     {
         _multiplayerManager = MultiplayerManager.Instance;
 
         _playerAim = aim;
+        _clientID = clientID;
         _player = player;
         _snake = snake;
         _camera = Camera.main;
         _plane = new Plane(Vector3.up, Vector3.zero);
 
-        _snake.AddComponent<CameraManager>().Init(_cameraOffsetY);
-        player.OnChange += OnChange;
+        _camera.transform.parent = _snake.transform;
+        _camera.transform.localPosition = Vector3.up * _cameraOffsetY;
 
+        player.OnChange += OnChange;
     }
 
     private void Update()
@@ -62,6 +65,7 @@ public class Controller : MonoBehaviour
 
         _cursor.position = point;
     }
+
     private void OnChange(List<DataChange> changes)
     {
         Vector3 position = _snake.transform.position;
@@ -76,20 +80,27 @@ public class Controller : MonoBehaviour
                     position.z = (float) changes[i].Value;
                     break;
                 case "d":
-                    _snake.SetDetailCount((byte)changes[i].Value);
+                    _snake.SetDetailCount((byte) changes[i].Value);
                     break;
+                case "score":
+                    _multiplayerManager.UpdateScore(_clientID, (ushort) changes[i].Value);
+                    break;
+
                 default:
                     Debug.LogWarning("Не обрабатывается изменение поля " + changes[i].Field);
                     break;
             }
         }
+
         _snake.SetRotation(position);
-        
     }
 
     public void Destroy()
     {
+        _camera.transform.parent = null;
+
         _player.OnChange -= OnChange;
-        _snake.Destroy();
+        _snake.Destroy(_clientID);
+        Destroy(gameObject);
     }
 }
